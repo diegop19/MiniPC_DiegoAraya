@@ -1,6 +1,7 @@
 
 package Vista;
 
+import Controlador.MiniPC;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
@@ -33,8 +34,10 @@ public class MainFrame extends javax.swing.JFrame {
     private DefaultTableModel modeloInstrucciones;
     private DefaultTableModel modeloMemoria;
     private JLabel lblPC, lblIR, lblAC, lblAX, lblBX, lblCX, lblDX, lblEstado;
-    private JButton btnEjecutar, btnPasoAPaso, btnLimpiar, btnEstadisticas, btnCargar;
+    private JButton btnEjecutar, btnPasoAPaso, btnLimpiar, btnEstadisticas, btnCargar,btnConfigurarMemoria;
     private JLabel lblArchivo;
+    private JTextField txtTamanoMemoria;
+   
  
     public MainFrame() {
         initComponents();
@@ -63,7 +66,7 @@ public class MainFrame extends javax.swing.JFrame {
 
   /**
      *Construye la interfaz, Se llama desde el
-     * constructor, después de initComponents()
+     * constructor
      */
     private void construirInterfaz() {
         setTitle("Mini PC");
@@ -81,37 +84,56 @@ public class MainFrame extends javax.swing.JFrame {
     private JPanel crearPanelSuperior() {
         JPanel panelSuperior = new JPanel(new BorderLayout(10, 10));
         panelSuperior.setBackground(COLOR_FONDO);
- 
+
         JLabel titulo = new JLabel("Mini PC - Simulador");
         titulo.setFont(FONT_TITULO);
         titulo.setForeground(COLOR_TEXTO);
         panelSuperior.add(titulo, BorderLayout.NORTH);
- 
+
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         panelBotones.setBackground(COLOR_FONDO);
- 
+
         btnEjecutar = crearBoton("Ejecutar");
         btnPasoAPaso = crearBoton("Paso a paso");
         btnLimpiar = crearBoton("Limpiar");
         btnEstadisticas = crearBoton("Estadísticas");
         btnCargar = crearBoton("Cargar archivo");
- 
+
         panelBotones.add(btnEjecutar);
         panelBotones.add(btnPasoAPaso);
         panelBotones.add(btnLimpiar);
         panelBotones.add(btnEstadisticas);
         panelBotones.add(Box.createHorizontalStrut(20));
         panelBotones.add(btnCargar);
- 
+
         lblArchivo = new JLabel("Ningún archivo cargado");
         lblArchivo.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         lblArchivo.setForeground(Color.GRAY);
         panelBotones.add(lblArchivo);
- 
-        panelSuperior.add(panelBotones, BorderLayout.CENTER);
+
+        JPanel panelMemoria = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        panelMemoria.setBackground(COLOR_FONDO);
+
+        JLabel lblMemoria = new JLabel("Tamaño de memoria:");
+        lblMemoria.setFont(FONT_LABEL);
+
+        txtTamanoMemoria = new JTextField("256", 6);
+        btnConfigurarMemoria = crearBoton("Configurar memoria");
+
+        panelMemoria.add(lblMemoria);
+        panelMemoria.add(txtTamanoMemoria);
+        panelMemoria.add(btnConfigurarMemoria);
+
+        JPanel panelCombinado = new JPanel();
+        panelCombinado.setLayout(new BoxLayout(panelCombinado, BoxLayout.Y_AXIS));
+        panelCombinado.setBackground(COLOR_FONDO);
+        panelCombinado.add(panelBotones);
+        panelCombinado.add(panelMemoria);
+
+        panelSuperior.add(panelCombinado, BorderLayout.CENTER);
         return panelSuperior;
     }
- 
+
     private JButton crearBoton(String texto) {
         JButton btn = new JButton(texto);
         btn.setFont(FONT_BOTON);
@@ -120,6 +142,10 @@ public class MainFrame extends javax.swing.JFrame {
         btn.setFocusPainted(false);
         btn.setBorder(new EmptyBorder(8, 16, 8, 16));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
+        btn.setBorderPainted(false);
+        
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
@@ -175,18 +201,32 @@ public class MainFrame extends javax.swing.JFrame {
     }
  
     private JTable estilizarTabla(JTable tabla) {
-        tabla.setFont(FONT_MONO);
-        tabla.setRowHeight(24);
-        tabla.setGridColor(COLOR_BORDE);
-        tabla.setSelectionBackground(new Color(200, 220, 245));
-        tabla.setSelectionForeground(COLOR_TEXTO);
-        tabla.getTableHeader().setFont(FONT_LABEL);
-        tabla.getTableHeader().setBackground(COLOR_PRIMARIO);
-        tabla.getTableHeader().setForeground(Color.WHITE);
-        tabla.getTableHeader().setReorderingAllowed(false);
-        return tabla;
+     tabla.setFont(FONT_MONO);
+     tabla.setRowHeight(24);
+     tabla.setGridColor(COLOR_BORDE);
+     tabla.setSelectionBackground(new Color(200, 220, 245));
+     tabla.setSelectionForeground(COLOR_TEXTO);
+     tabla.setBackground(Color.WHITE);
+     tabla.getTableHeader().setReorderingAllowed(false);
+
+     javax.swing.table.DefaultTableCellRenderer renderizadorCeldas = new javax.swing.table.DefaultTableCellRenderer();
+     renderizadorCeldas.setOpaque(true);
+     renderizadorCeldas.setBackground(Color.WHITE);
+     renderizadorCeldas.setForeground(COLOR_TEXTO);
+     for (int i = 0; i < tabla.getColumnCount(); i++) {
+         tabla.getColumnModel().getColumn(i).setCellRenderer(renderizadorCeldas);
+     }
+
+     javax.swing.table.DefaultTableCellRenderer renderizadorHeader = new javax.swing.table.DefaultTableCellRenderer();
+     renderizadorHeader.setOpaque(true);
+     renderizadorHeader.setBackground(COLOR_PRIMARIO);
+     renderizadorHeader.setForeground(Color.WHITE);
+     renderizadorHeader.setFont(FONT_LABEL);
+     renderizadorHeader.setHorizontalAlignment(SwingConstants.CENTER);
+     tabla.getTableHeader().setDefaultRenderer(renderizadorHeader);
+
+     return tabla;
     }
- 
     private JPanel crearPanelBCP() {
         JPanel panel = crearPanelConTitulo("BPC actual - CPU");
  
@@ -244,6 +284,8 @@ public class MainFrame extends javax.swing.JFrame {
     public JLabel getLblCX() { return lblCX; }
     public JLabel getLblDX() { return lblDX; }
     public JLabel getLblEstado() { return lblEstado; }
+    public JTextField getTxtTamanoMemoria() { return txtTamanoMemoria; }
+    public JButton getBtnConfigurarMemoria() { return btnConfigurarMemoria; }
     public void setArchivoCargado(File archivo) {
         lblArchivo.setText(archivo.getName());
     }
@@ -255,19 +297,17 @@ public class MainFrame extends javax.swing.JFrame {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
+         javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+     } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
+         logger.log(java.util.logging.Level.SEVERE, null, ex);
+     }
+             //</editor-fold>
  
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new MainFrame().setVisible(true));
+       java.awt.EventQueue.invokeLater(() -> {
+            MainFrame ventana = new MainFrame();
+            new MiniPC(ventana, 256);
+            ventana.setVisible(true);
+        });
     }
 
 
