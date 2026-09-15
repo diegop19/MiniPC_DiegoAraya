@@ -1,7 +1,7 @@
 # MiniPC
 # Diego Araya Ureña - 2023071310
 
-Estado del proyecto: Completo [5]
+Estado del proyecto:  [4]
 Enlace del video: https://youtu.be/4qHD9bfHg74
 Mini PC - Simulador de Instrucciones
 
