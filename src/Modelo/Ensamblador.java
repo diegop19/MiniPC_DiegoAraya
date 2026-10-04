@@ -191,21 +191,39 @@ public class Ensamblador {
         return new Instruccion(linea, "INT", null, null, valorCodigo, null, null, peso);
     }
  
-    // JMP +3 / JMP -2 / JE +3 / JNE -1
-    /**
+// JMP +3 / JMP -2 / JE +3 / JNE -1
     private Instruccion parsearSalto(String linea, String[] tokens, int numeroLinea, String opcode)
-        return "";
-    }**/
+            throws FormatoInvalidoException {
+        if (tokens.length != 2) {
+            throw new FormatoInvalidoException(
+                    "Linea " + numeroLinea + ": " + opcode + " requiere un desplazamiento -> \"" + linea + "\"");
+        }
+        Integer desplazamiento = parsearEntero(tokens[1], numeroLinea);
+        return new Instruccion(linea, opcode, null, null, null, desplazamiento, null, PESOS.get(opcode));
+    }
  
-    // PARAM v1, v2, v3
-    /**
+    // PARAM v1, v2, v3 (maximo 3 valores)
     private Instruccion parsearParam(String linea, String[] tokens, int numeroLinea) throws FormatoInvalidoException {
-     return "";
-    }**/
+        int cantidadValores = tokens.length - 1;
+        if (cantidadValores < 1 || cantidadValores > 3) {
+            throw new FormatoInvalidoException(
+                    "Linea " + numeroLinea + ": PARAM admite de 1 a 3 valores -> \"" + linea + "\"");
+        }
+        List<Integer> parametros = new ArrayList<>();
+        for (int i = 1; i < tokens.length; i++) {
+            parametros.add(parsearEntero(tokens[i], numeroLinea));
+        }
+        return new Instruccion(linea, "PARAM", null, null, null, null, parametros, PESOS.get("PARAM"));
+    }
  
     // valida que el texto sea uno de los 4 registros permitidos
     private String validarRegistro(String texto, int numeroLinea) throws FormatoInvalidoException {
-     return "";
+        String registro = texto.toUpperCase();
+        if (!REGISTROS.contains(registro)) {
+            throw new FormatoInvalidoException(
+                    "Linea " + numeroLinea + ": registro desconocido \"" + texto + "\"");
+        }
+        return registro;
     }
  
     // convierte texto a entero, validando signo y rango de 8 bits (-127 a 127)
