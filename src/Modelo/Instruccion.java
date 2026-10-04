@@ -1,4 +1,5 @@
 package Modelo;
+import java.util.List;
 
 /**
  * Representa una instruccion ya interpretada del asm
@@ -10,16 +11,25 @@ public class Instruccion {
 
     private String textoOriginal;   
     private String opcode;          
-    private String registro;        
-    private Integer valor;          
-    private String binario;         
+    private String registroDestino;
+    private String registroOrigen;
+    private Integer valor;  
+    private Integer desplazamiento;
+    private List<Integer> parametros;
+    private int peso;
+    
+    //private String binario;         
 
-    public Instruccion(String textoOriginal, String opcode, String registro, Integer valor, String binario) {
+    public Instruccion(String textoOriginal, String opcode, String registroDestino,String registroOrigen, Integer valor, Integer desplazamiento,List<Integer> parametros, int peso) {
         this.textoOriginal = textoOriginal;
         this.opcode = opcode;
-        this.registro = registro;
+        this.registroDestino = registroDestino;
+        this.registroOrigen = registroOrigen;
+        this.desplazamiento = desplazamiento;
+        this.parametros = parametros;
+        this.peso = peso;
         this.valor = valor;
-        this.binario = binario;
+        //this.binario = binario;
     }
 
     public String getTextoOriginal() {
@@ -30,20 +40,37 @@ public class Instruccion {
         return opcode;
     }
 
-    public String getRegistro() {
-        return registro;
+    public String getRegistroDestino() {
+        return registroDestino;
+    }
+    
+    public String getRegistroOrigen() {
+        return registroOrigen;
     }
 
     public Integer getValor() {
         return valor;
     }
-
-    public String getBinario() {
-        return binario;
+    
+    public Integer getDesplazamiento(){
+        return desplazamiento;
+    }
+    
+    public List<Integer> getParametros(){
+        return parametros;
+    }
+    
+    public int getPeso(){
+        return peso;
     }
 
+    /**public String getBinario() {
+        return binario;
+    }
+    **/
+    
     @Override
     public String toString() {
-        return textoOriginal + " -> " + binario;
+        return textoOriginal;
     }
 }
