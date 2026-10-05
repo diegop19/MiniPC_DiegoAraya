@@ -1,0 +1,128 @@
+package Modelo;
+
+/**
+ * Representa el almacenamiento secundario (disco) del Mini PC.
+ * Se divide en 3 zonas consecutivas:
+ *   1. Programas: copia de los archivos asm cargados
+ *   2. Memoria virtual: zona de swap para procesos que no caben en RAM
+ *   3. Archivos virtuales: usados por la instruccion INT 21H
+ *
+ * Los porcentajes estan fijos por ahora como constantes, pero se va a cambiar
+ * para que se lean desde un archivo json
+ *
+ * @author Diego Araya
+ */
+public class Disco {
+
+    public static final int TAMANO_MINIMO = 64;
+
+    // porcentajes de cada zona
+    public static final double PORCENTAJE_PROGRAMAS = 0.50;
+    public static final double PORCENTAJE_MEMORIA_VIRTUAL = 0.125;
+    public static final double PORCENTAJE_ARCHIVOS_VIRTUALES = 0.375;
+
+    private String[] datos;
+    private int tamanoTotal;
+
+    // limites de cada zona (inicio inclusive, fin exclusivo)
+    private int inicioProgramas;
+    private int finProgramas;
+    private int inicioMemoriaVirtual;
+    private int finMemoriaVirtual;
+    private int inicioArchivos;
+    private int finArchivos;
+
+    public Disco(int tamanoTotal) {
+        if (tamanoTotal < TAMANO_MINIMO) {
+            tamanoTotal = TAMANO_MINIMO;
+        }
+        this.tamanoTotal = tamanoTotal;
+        this.datos = new String[tamanoTotal];
+
+        // la zona de programas va primero
+        inicioProgramas = 0;
+        finProgramas = (int) (tamanoTotal * PORCENTAJE_PROGRAMAS);
+
+        // despues la memoria virtual
+        inicioMemoriaVirtual = finProgramas;
+        finMemoriaVirtual = inicioMemoriaVirtual + (int) (tamanoTotal * PORCENTAJE_MEMORIA_VIRTUAL);
+
+        // el resto queda para archivos virtuales
+        inicioArchivos = finMemoriaVirtual;
+        finArchivos = tamanoTotal; // asi no se pierden posiciones por el redondeo de arriba
+    }
+
+    // ---- zona de programas ----
+
+    public void escribirPrograma(int posicion, String valor) {
+        validarZona(posicion, inicioProgramas, finProgramas, "programas");
+        datos[posicion] = valor;
+    }
+
+    public int getInicioProgramas() {
+        return inicioProgramas;
+    }
+
+    public int getFinProgramas() {
+        return finProgramas;
+    }
+
+    // ---- zona de memoria virtual (swap) ----
+
+    public void escribirMemoriaVirtual(int posicion, String valor) {
+        validarZona(posicion, inicioMemoriaVirtual, finMemoriaVirtual, "memoria virtual");
+        datos[posicion] = valor;
+    }
+
+    public int getInicioMemoriaVirtual() {
+        return inicioMemoriaVirtual;
+    }
+
+    public int getFinMemoriaVirtual() {
+        return finMemoriaVirtual;
+    }
+
+    // ---- zona de archivos virtuales (INT 21H) ----
+
+    public void escribirArchivo(int posicion, String valor) {
+        validarZona(posicion, inicioArchivos, finArchivos, "archivos virtuales");
+        datos[posicion] = valor;
+    }
+
+    public int getInicioArchivos() {
+        return inicioArchivos;
+    }
+
+    public int getFinArchivos() {
+        return finArchivos;
+    }
+
+    // ---- lectura general, sirve para cualquier zona ----
+
+    public String leer(int posicion) {
+        if (posicion < 0 || posicion >= tamanoTotal) {
+            throw new IndexOutOfBoundsException("Posicion fuera de rango: " + posicion);
+        }
+        return datos[posicion];
+    }
+
+    private void validarZona(int posicion, int inicio, int fin, String nombreZona) {
+        if (posicion < inicio || posicion >= fin) {
+            throw new IllegalArgumentException(
+                    "Posicion " + posicion + " no pertenece a la zona de " + nombreZona
+                    + " [" + inicio + " - " + (fin - 1) + "]");
+        }
+    }
+
+    public void limpiar() {
+        datos = new String[tamanoTotal];
+    }
+
+    public int getTamanoTotal() {
+        return tamanoTotal;
+    }
+
+    public String[] getDatos() {
+        return datos;
+    }
+}
