@@ -1,12 +1,12 @@
 package Modelo;
 
-/**
- * Bloque de Control de Procesos.
+/*
+ * Bloque de control de procesos. 
  * Guarda toda la info de un proceso y sabe convertirse a lineas de
  * texto para guardarse en la zona de kernel de la memoria, y
- * tambien reconstruirse leyendo esas lineas de vuelta
+ * tambien reconstruirse leyendo esas lineas de vuelta. 
  *
- * Cada BCP ocupa 21 posiciones consecutivas en memoria (con cada elemento de la pila en su propia posicion).
+ * Cada BCP ocupa 21 posiciones consecutivas en memoria 
  *
  * @author Diego Araya
  */
@@ -60,15 +60,98 @@ public class BCP {
     }
 
     /**
+     * Convierte este BCP en las 21 lineas de texto que se van a
+     * escribir en la zona de kernel de la memoria, empezando en
+     * la posicion indicada
+     */
     public String[] serializar() {
-        
-        return "";
-    }**/
+        String[] lineas = new String[TAMANO_BLOQUE];
 
-   /**
+        lineas[0] = "PID:" + pid;
+        lineas[1] = "ESTADO:" + estado;
+        lineas[2] = "PC:" + pc;
+        lineas[3] = "IR:" + ir;
+        lineas[4] = "AC:" + ac;
+        lineas[5] = "AX:" + ax;
+        lineas[6] = "BX:" + bx;
+        lineas[7] = "CX:" + cx;
+        lineas[8] = "DX:" + dx;
+
+        // cada elemento de la pila va en su propia posicion, del 9 al 13
+        Integer[] valoresPila = pila.getValores();
+        for (int i = 0; i < Pila.TAMANO; i++) {
+            if (valoresPila[i] == null) {
+                lineas[9 + i] = "PILA_" + i + ":VACIO";
+            } else {
+                lineas[9 + i] = "PILA_" + i + ":" + valoresPila[i];
+            }
+        }
+
+        lineas[14] = "BASE:" + base;
+        lineas[15] = "LIMITE:" + limite;
+        lineas[16] = "PRIORIDAD:" + prioridad;
+        lineas[17] = "TIEMPO_INICIO:" + tiempoInicio;
+        lineas[18] = "TIEMPO_CPU:" + tiempoCpu;
+        lineas[19] = "ARCHIVOS_ABIERTOS:" + archivosAbiertos;
+        lineas[20] = "SIGUIENTE_BCP:" + siguienteBCP;
+
+        return lineas;
+    }
+
+    /**
+     * Reconstruye un BCP a partir de las 21 lineas leidas de memoria
+     * Es nesesario para tener los valores legibles en memoria
+     */
     public static BCP deserializar(String[] lineas) {
-        return;
-    }**/
+        // sacamos el valor despues de los dos puntos de cada linea
+        int pid = Integer.parseInt(quitarEtiqueta(lineas[0]));
+        Estado estado = Estado.valueOf(quitarEtiqueta(lineas[1]));
+        int pc = Integer.parseInt(quitarEtiqueta(lineas[2]));
+        String ir = quitarEtiqueta(lineas[3]);
+        int ac = Integer.parseInt(quitarEtiqueta(lineas[4]));
+        int ax = Integer.parseInt(quitarEtiqueta(lineas[5]));
+        int bx = Integer.parseInt(quitarEtiqueta(lineas[6]));
+        int cx = Integer.parseInt(quitarEtiqueta(lineas[7]));
+        int dx = Integer.parseInt(quitarEtiqueta(lineas[8]));
+
+        Integer[] valoresPila = new Integer[Pila.TAMANO];
+        int cantidadPila = 0;
+        for (int i = 0; i < Pila.TAMANO; i++) {
+            String valorTexto = quitarEtiqueta(lineas[9 + i]);
+            if (valorTexto.equals("VACIO")) {
+                valoresPila[i] = null;
+            } else {
+                valoresPila[i] = Integer.valueOf(valorTexto);
+                cantidadPila++;
+            }
+        }
+
+        int base = Integer.parseInt(quitarEtiqueta(lineas[14]));
+        int limite = Integer.parseInt(quitarEtiqueta(lineas[15]));
+        int prioridad = Integer.parseInt(quitarEtiqueta(lineas[16]));
+        String tiempoInicio = quitarEtiqueta(lineas[17]);
+        int tiempoCpu = Integer.parseInt(quitarEtiqueta(lineas[18]));
+        String archivosAbiertos = quitarEtiqueta(lineas[19]);
+        int siguienteBCP = Integer.parseInt(quitarEtiqueta(lineas[20]));
+
+        BCP bcp = new BCP(pid, base, limite);
+        bcp.estado = estado;
+        bcp.pc = pc;
+        bcp.ir = ir;
+        bcp.ac = ac;
+        bcp.ax = ax;
+        bcp.bx = bx;
+        bcp.cx = cx;
+        bcp.dx = dx;
+        bcp.pila.cargarValores(valoresPila, cantidadPila);
+        bcp.prioridad = prioridad;
+        bcp.tiempoInicio = tiempoInicio;
+        bcp.tiempoCpu = tiempoCpu;
+        bcp.archivosAbiertos = archivosAbiertos;
+        bcp.siguienteBCP = siguienteBCP;
+
+        return bcp;
+    }
 
     // una linea viene como "ETIQUETA:valor", esto se queda solo con el valor
     private static String quitarEtiqueta(String linea) {
