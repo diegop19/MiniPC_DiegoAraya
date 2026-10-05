@@ -1,71 +1,158 @@
 package Modelo;
 
 /**
- * Representa la memoria principal del PC
- * Se divide en dos zonas: espacio del Sistema Operativo  y
- * espacio de Usuario, donde se cargan las instrucciones del programa.
+ * Memoria principal del Mini PC 
+ * Se divide en dos zonas:
+ *   - Kernel: aqui se guardan los BCP de los procesos (serializados
+ *     como texto, 21 posiciones por proceso)
+ *   - Usuario: aqui se cargan los programas de los procesos
  *
  * @author Diego Araya
  */
-
 public class Memoria {
 
-    private String[] datos;      // contenido de cada posicion de memoria
-    private int tamanoTotal;     // tamaño total de la memoria
-    private int limiteSO;        // ultima posición reservada para el S.O. 
-    private int inicioUsuario;   // primera posicion disponible para el usuario
-
     public static final int TAMANO_MINIMO = 128;
-    public static final int ESPACIO_SO = 64; // posiciones fijas reservadas al SO
 
-    /**
-     * Crea la memoria con un tamaño dado, reservando siempre las
-     * primeras posiciones para el Sistema Operativo.
-     *
-     * @param tamanoTotal tamaño total deseado 
-     */
+    // porcentaje por defecto para la zona de kernel
+    public static final double PORCENTAJE_KERNEL_DEFAULT = 0.40;
+
+    private String[] datos;
+    private int tamanoTotal;
+    private int finKernel;      // posicion donde termina el kernel (exclusiva)
+    private int inicioUsuario;  // igual a finKernel
+
     public Memoria(int tamanoTotal) {
+        this(tamanoTotal, PORCENTAJE_KERNEL_DEFAULT);
+    }
+
+    public Memoria(int tamanoTotal, double porcentajeKernel) {
         if (tamanoTotal < TAMANO_MINIMO) {
             tamanoTotal = TAMANO_MINIMO;
         }
         this.tamanoTotal = tamanoTotal;
         this.datos = new String[tamanoTotal];
-        this.limiteSO = ESPACIO_SO;      // siempre 64, sin importar el tamaño total
-        this.inicioUsuario = ESPACIO_SO; // el usuario empieza en la posición 64
+        this.finKernel = (int) (tamanoTotal * porcentajeKernel);
+        this.inicioUsuario = finKernel;
+    }
+
+    // zona de kernel (BCP de los procesos)
+
+    /**
+     * Busca la primera posicion libre dentro del kernel donde
+     * quepa un bloque completo de BCP (21 posiciones seguidas
+     * todas en null). Si no hay espacio, devuelve -1.
+     */
+    public int buscarSlotKernelLibre() {
+        int tamanoBloque = BCP.TAMANO_BLOQUE;
+
+        for (int inicio = 0; inicio + tamanoBloque <= finKernel; inicio += tamanoBloque) {
+            boolean libre = true;
+            for (int j = 0; j < tamanoBloque; j++) {
+                if (datos[inicio + j] != null) {
+                    libre = false;
+                    break;
+                }
+            }
+            if (libre) {
+                return inicio;
+            }
+        }
+        return -1;
     }
 
     /**
-     * Guarda un valor en una posicion de memoria, validando que
-     * este dentro del espacio de usuario.
+     * Escribe las 21 lineas de un BCP ya serializado, empezando
+     * en la posicion indicada.
      */
-    public void escribir(int posicion, String valor) {
+    public void escribirBCP(int posicionInicio, String[] lineasBCP) {
+        if (posicionInicio < 0 || posicionInicio + lineasBCP.length > finKernel) {
+            throw new IllegalArgumentException(
+                    "El bloque de BCP no cabe en la zona de kernel a partir de " + posicionInicio);
+        }
+        for (int i = 0; i < lineasBCP.length; i++) {
+            datos[posicionInicio + i] = lineasBCP[i];
+        }
+    }
+
+    /**
+     * Lee las 21 lineas de un BCP a partir de la posicion indicada.
+     */
+    public String[] leerBCP(int posicionInicio) {
+        String[] lineas = new String[BCP.TAMANO_BLOQUE];
+        for (int i = 0; i < BCP.TAMANO_BLOQUE; i++) {
+            lineas[i] = datos[posicionInicio + i];
+        }
+        return lineas;
+    }
+
+    /**
+     * Deja en null las 21 posiciones de un BCP, para liberar ese
+     * espacio cuando el proceso termina o se saca de memoria.
+     */
+    public void liberarBCP(int posicionInicio) {
+        for (int i = 0; i < BCP.TAMANO_BLOQUE; i++) {
+            datos[posicionInicio + i] = null;
+        }
+    }
+
+    // zona de usuario (programas de los procesos)
+
+    public void escribirUsuario(int posicion, String valor) {
         validarPosicionUsuario(posicion);
         datos[posicion] = valor;
     }
 
     /**
-     * Lee el valor almacenado en una posicion de memoria.
+     * Busca un espacio libre y contiguo en la zona de usuario con
+     * al menos la cantidad de posiciones pedida Devuelve la
+     * posicion donde empieza, o -1 si no encontro espacio suficiente
      */
+    public int buscarEspacioUsuario(int cantidadPosiciones) {
+        int libresSeguidas = 0;
+        int inicioCandidato = -1;
+
+        for (int i = inicioUsuario; i < tamanoTotal; i++) {
+            if (datos[i] == null) {
+                if (libresSeguidas == 0) {
+                    inicioCandidato = i;
+                }
+                libresSeguidas++;
+                if (libresSeguidas == cantidadPosiciones) {
+                    return inicioCandidato;
+                }
+            } else {
+                libresSeguidas = 0;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Libera un rango de posiciones de la zona de usuario, por
+     * ejemplo cuando un proceso termina o se manda a swap.
+     */
+    public void liberarUsuario(int posicionInicio, int cantidadPosiciones) {
+        for (int i = 0; i < cantidadPosiciones; i++) {
+            datos[posicionInicio + i] = null;
+        }
+    }
+
+    private void validarPosicionUsuario(int posicion) {
+        if (posicion < inicioUsuario || posicion >= tamanoTotal) {
+            throw new IllegalArgumentException(
+                    "Posicion " + posicion + " fuera del espacio de usuario [" + inicioUsuario + " - " + (tamanoTotal - 1) + "]");
+        }
+    }
+
+    
+    // lectura general y utilidades
     public String leer(int posicion) {
         if (posicion < 0 || posicion >= tamanoTotal) {
-            throw new IndexOutOfBoundsException("Posición fuera de rango: " + posicion);
+            throw new IndexOutOfBoundsException("Posicion fuera de rango: " + posicion);
         }
         return datos[posicion];
     }
 
-    /**
-     * Valida que una posicion pertenezca al espacio de usuario
-     */
-    private void validarPosicionUsuario(int posicion) {
-        if (posicion < inicioUsuario || posicion >= tamanoTotal) {
-            throw new IllegalArgumentException(
-                    "Posición " + posicion + " fuera del espacio de usuario [" + inicioUsuario + " - " + (tamanoTotal - 1) + "]");
-        }
-    }
-
-    /**
-     * Limpia todo el contenido de la memoria 
-     */
     public void limpiar() {
         datos = new String[tamanoTotal];
     }
@@ -74,8 +161,8 @@ public class Memoria {
         return tamanoTotal;
     }
 
-    public int getLimiteSO() {
-        return limiteSO;
+    public int getFinKernel() {
+        return finKernel;
     }
 
     public int getInicioUsuario() {
