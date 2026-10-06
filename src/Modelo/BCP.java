@@ -236,9 +236,17 @@ public class BCP {
     public int getBase() {
         return base;
     }
+    
+    public void setBase(int base) {
+        this.base = base;
+    }
 
     public int getLimite() {
         return limite;
+    }
+    
+    public void setLimite(int limite) {
+        this.limite = limite;
     }
 
     public int getPrioridad() {
