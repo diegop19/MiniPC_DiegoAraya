@@ -1,4 +1,3 @@
-
 package Vista;
  
 import Controlador.MiniPC;
@@ -10,7 +9,7 @@ import java.awt.*;
 import java.io.File;
  
 /**
- * Ventana principal del Gestor de Procesos 
+ * Ventana principal del Gestor de Procesos (Proyecto #1).
  *
  * @author Diego Araya
  */
@@ -18,7 +17,7 @@ public class MainFrame extends javax.swing.JFrame {
  
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MainFrame.class.getName());
  
-    // Colores y fuentes del tema 
+    // ---- Colores y fuentes del tema ----
     private static final Color COLOR_PRIMARIO = new Color(41, 98, 168);
     private static final Color COLOR_PRIMARIO_HOVER = new Color(30, 80, 145);
     private static final Color COLOR_FONDO = new Color(245, 247, 250);
@@ -32,7 +31,7 @@ public class MainFrame extends javax.swing.JFrame {
     private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 13);
     private static final Font FONT_MONO = new Font("Consolas", Font.PLAIN, 13);
  
-    // Tablas 
+    // ---- Tablas ----
     private JTable tablaProcesos;
     private JTable tablaMemoria;
     private JTable tablaDisco;
@@ -40,19 +39,19 @@ public class MainFrame extends javax.swing.JFrame {
     private DefaultTableModel modeloMemoria;
     private DefaultTableModel modeloDisco;
  
-    // Panel BPC actual 
+    // ---- Panel BPC actual ----
     private JLabel lblPid, lblEstado, lblPC, lblIR, lblAC, lblAX, lblBX, lblCX, lblDX;
  
-    // Pantalla y teclado 
+    // ---- Pantalla y teclado ----
     private JTextArea areaPantalla;
     private JTextField txtTeclado;
     private JButton btnEnviarTeclado;
  
-    //  Botones de control 
+    // ---- Botones de control ----
     private JButton btnEjecutar, btnSiguiente, btnLimpiar, btnEstadisticas, btnCargar;
     private JLabel lblArchivos;
  
-    // Configuracion de memoria/disco 
+    // ---- Configuración de memoria/disco ----
     private JTextField txtTamanoMemoria;
     private JTextField txtTamanoDisco;
     private JButton btnConfigurar;
@@ -61,7 +60,7 @@ public class MainFrame extends javax.swing.JFrame {
         initComponents();
         construirInterfaz();
     }
-
+ 
     
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -84,6 +83,9 @@ public class MainFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
 
+    /**
+     * Arma la interfaz completa por código, después de initComponents().
+     */
     private void construirInterfaz() {
         setTitle("Proyecto 1 - Gestor de Procesos");
         setSize(1100, 700);
@@ -97,7 +99,9 @@ public class MainFrame extends javax.swing.JFrame {
         ((JPanel) getContentPane()).setBorder(new EmptyBorder(10, 10, 10, 10));
     }
  
-    
+    // =========================================================
+    // PANEL SUPERIOR: título + botones + configuración
+    // =========================================================
     private JPanel crearPanelSuperior() {
         JPanel panelSuperior = new JPanel();
         panelSuperior.setLayout(new BoxLayout(panelSuperior, BoxLayout.Y_AXIS));
@@ -180,7 +184,9 @@ public class MainFrame extends javax.swing.JFrame {
         return btn;
     }
  
+    // =========================================================
     // PANEL CENTRAL: Procesos | BPC | Memoria/Disco + Pantalla
+    // =========================================================
     private JPanel crearPanelCentral() {
         JPanel panelCentral = new JPanel(new BorderLayout(10, 10));
         panelCentral.setBackground(COLOR_FONDO);
@@ -226,7 +232,7 @@ public class MainFrame extends javax.swing.JFrame {
         return panel;
     }
  
-    //  Tabla Procesos 
+    // ---- Tabla Procesos ----
     private JPanel crearPanelTablaProcesos() {
         JPanel panel = crearPanelConTitulo("Procesos");
         modeloProcesos = new DefaultTableModel(new Object[]{"Proceso", "Estado"}, 0);
@@ -235,7 +241,7 @@ public class MainFrame extends javax.swing.JFrame {
         return panel;
     }
  
-    //  Tabla Memoria 
+    // ---- Tabla Memoria ----
     private JPanel crearPanelTablaMemoria() {
         JPanel panel = crearPanelConTitulo("Memoria");
         modeloMemoria = new DefaultTableModel(new Object[]{"Pos", "Valor en memoria"}, 0);
@@ -244,7 +250,7 @@ public class MainFrame extends javax.swing.JFrame {
         return panel;
     }
  
-    //  Tabla Disco 
+    // ---- Tabla Disco ----
     private JPanel crearPanelTablaDisco() {
         JPanel panel = crearPanelConTitulo("Disco");
         modeloDisco = new DefaultTableModel(new Object[]{"Pos", "Valor en disco"}, 0);
@@ -281,7 +287,7 @@ public class MainFrame extends javax.swing.JFrame {
         return tabla;
     }
  
-    // panel BPC actual 
+    // ---- Panel BPC actual ----
     private JPanel crearPanelBCP() {
         JPanel panel = crearPanelConTitulo("BPC actual - CPU1");
  
@@ -359,8 +365,9 @@ public class MainFrame extends javax.swing.JFrame {
         return panel;
     }
  
-   
+    // =========================================================
     // Getters para el Controlador
+    // =========================================================
     public JButton getBtnEjecutar() { return btnEjecutar; }
     public JButton getBtnSiguiente() { return btnSiguiente; }
     public JButton getBtnLimpiar() { return btnLimpiar; }
@@ -406,7 +413,7 @@ public class MainFrame extends javax.swing.JFrame {
  
         java.awt.EventQueue.invokeLater(() -> {
             MainFrame ventana = new MainFrame();
-            //new MiniPC(ventana); 
+            new MiniPC(ventana, 256, 512); // memoria principal y disco por defecto
             ventana.setVisible(true);
         });
     }
