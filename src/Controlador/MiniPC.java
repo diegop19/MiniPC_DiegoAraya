@@ -26,6 +26,8 @@ import java.util.Map;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * Conecta la ventana con el modelo. Aqui viven los listeners de los
@@ -51,6 +53,11 @@ public class MiniPC {
 
     private int tamanoMemoria;
     private int tamanoDisco;
+    private static final String RUTA_CONFIG = "config.json";
+
+    private double porcentajeKernel;
+    private double porcentajeProgramas;
+    private double porcentajeMemoriaVirtual;
 
     // el proceso que esta montado en el cpu en este momento, null si el cpu esta libre
     private BCP procesoActual;
@@ -63,12 +70,13 @@ public class MiniPC {
     private List<String> procesosTerminados;
     private List<String> historialEstadisticas;
 
-    public MiniPC(MainFrame vista, int tamanoMemoria, int tamanoDisco) {
+    public MiniPC(MainFrame vista) {
         this.vista = vista;
         this.ensamblador = new Ensamblador();
         this.despachador = new Despachador();
-        this.tamanoMemoria = tamanoMemoria;
-        this.tamanoDisco = tamanoDisco;
+        cargarConfiguracion();
+        vista.getTxtTamanoMemoria().setText(String.valueOf(tamanoMemoria));
+        vista.getTxtTamanoDisco().setText(String.valueOf(tamanoDisco));
 
         crearModelo();
         registrarListeners();
@@ -80,8 +88,8 @@ public class MiniPC {
      * iniciar, al limpiar y al cambiar la configuracion.
      */
     private void crearModelo() {
-        memoria = new Memoria(tamanoMemoria);
-        disco = new Disco(tamanoDisco);
+        memoria = new Memoria(tamanoMemoria, porcentajeKernel);
+        disco = new Disco(tamanoDisco, porcentajeProgramas, porcentajeMemoriaVirtual);
         tablaProcesos = new TablaProcesos(memoria);
         colaTrabajos = new ColaTrabajos();
         planificador = new Planificador(colaTrabajos, tablaProcesos, memoria, disco);
@@ -97,6 +105,76 @@ public class MiniPC {
         colaEsperaTeclado = new LinkedList<>();
         procesosTerminados = new ArrayList<>();
         historialEstadisticas = new ArrayList<>();
+    }
+    
+        /**
+     * Lee config.json y guarda los valores. Si el archivo no existe o
+     * tiene algun valor invalido, se avisa y el programa se cierra,
+     * porque la configuracion no debe quedar escrita en el codigo.
+     */
+    private void cargarConfiguracion() {
+        try {
+            String contenido = new String(Files.readAllBytes(Paths.get(RUTA_CONFIG)));
+
+            tamanoMemoria = (int) leerNumero(contenido, "memoriaPrincipal");
+            porcentajeKernel = leerNumero(contenido, "porcentajeKernel");
+            tamanoDisco = (int) leerNumero(contenido, "disco");
+            porcentajeProgramas = leerNumero(contenido, "porcentajeProgramas");
+            porcentajeMemoriaVirtual = leerNumero(contenido, "porcentajeMemoriaVirtual");
+
+            validarConfiguracion();
+        } catch (IOException e) {
+            mostrarError("No se pudo leer el archivo " + new File(RUTA_CONFIG).getAbsolutePath(),
+                    "Error de configuración");
+            System.exit(1);
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage(), "Configuración inválida");
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Busca una clave en el texto del json y devuelve su valor numerico.
+     * Como el json es plano, alcanza con buscar la clave, ir hasta los
+     * dos puntos y cortar hasta la coma o la llave final.
+     */
+    private double leerNumero(String json, String clave) {
+        int posClave = json.indexOf("\"" + clave + "\"");
+        if (posClave == -1) {
+            throw new IllegalArgumentException("Falta la clave \"" + clave + "\" en " + RUTA_CONFIG);
+        }
+
+        int posDosPuntos = json.indexOf(":", posClave);
+        int fin = json.indexOf(",", posDosPuntos);
+        if (fin == -1) {
+            fin = json.indexOf("}", posDosPuntos);
+        }
+
+        String valor = json.substring(posDosPuntos + 1, fin).trim();
+        try {
+            return Double.parseDouble(valor);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Valor inválido para \"" + clave + "\": " + valor);
+        }
+    }
+
+    private void validarConfiguracion() {
+        if (tamanoMemoria < Memoria.TAMANO_MINIMO) {
+            throw new IllegalArgumentException("memoriaPrincipal debe ser al menos " + Memoria.TAMANO_MINIMO);
+        }
+        if (tamanoDisco < Disco.TAMANO_MINIMO) {
+            throw new IllegalArgumentException("disco debe ser al menos " + Disco.TAMANO_MINIMO);
+        }
+        if (porcentajeKernel <= 0 || porcentajeKernel >= 1) {
+            throw new IllegalArgumentException("porcentajeKernel debe estar entre 0 y 1");
+        }
+        if ((int) (tamanoMemoria * porcentajeKernel) < BCP.TAMANO_BLOQUE) {
+            throw new IllegalArgumentException("El kernel no alcanza ni para un BCP (" + BCP.TAMANO_BLOQUE + " posiciones)");
+        }
+        if (porcentajeProgramas <= 0 || porcentajeMemoriaVirtual <= 0
+                || porcentajeProgramas + porcentajeMemoriaVirtual >= 1) {
+            throw new IllegalArgumentException("Los porcentajes del disco deben ser positivos y sumar menos de 1");
+        }
     }
 
     private void registrarListeners() {

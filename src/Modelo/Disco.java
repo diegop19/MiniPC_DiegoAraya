@@ -16,11 +16,6 @@ public class Disco {
 
     public static final int TAMANO_MINIMO = 64;
 
-    // porcentajes de cada zona
-    public static final double PORCENTAJE_PROGRAMAS = 0.50;
-    public static final double PORCENTAJE_MEMORIA_VIRTUAL = 0.125;
-    public static final double PORCENTAJE_ARCHIVOS_VIRTUALES = 0.375;
-
     private String[] datos;
     private int tamanoTotal;
 
@@ -32,24 +27,22 @@ public class Disco {
     private int inicioArchivos;
     private int finArchivos;
 
-    public Disco(int tamanoTotal) {
+    public Disco(int tamanoTotal, double porcentajeProgramas, double porcentajeMemoriaVirtual) {
         if (tamanoTotal < TAMANO_MINIMO) {
             tamanoTotal = TAMANO_MINIMO;
         }
         this.tamanoTotal = tamanoTotal;
         this.datos = new String[tamanoTotal];
 
-        // la zona de programas va primero
         inicioProgramas = 0;
-        finProgramas = (int) (tamanoTotal * PORCENTAJE_PROGRAMAS);
+        finProgramas = (int) (tamanoTotal * porcentajeProgramas);
 
-        // despues la memoria virtual
         inicioMemoriaVirtual = finProgramas;
-        finMemoriaVirtual = inicioMemoriaVirtual + (int) (tamanoTotal * PORCENTAJE_MEMORIA_VIRTUAL);
+        finMemoriaVirtual = inicioMemoriaVirtual + (int) (tamanoTotal * porcentajeMemoriaVirtual);
 
-        // el resto queda para archivos virtuales
+        // los archivos virtuales se quedan con todo lo que sobre
         inicioArchivos = finMemoriaVirtual;
-        finArchivos = tamanoTotal; // asi no se pierden posiciones por el redondeo de arriba
+        finArchivos = tamanoTotal;
     }
 
     // ---- zona de programas ----

@@ -140,11 +140,11 @@ public class MainFrame extends javax.swing.JFrame {
  
         JLabel lblMem = new JLabel("Memoria principal:");
         lblMem.setFont(FONT_LABEL);
-        txtTamanoMemoria = new JTextField("256", 5);
+        txtTamanoMemoria = new JTextField(5);
  
         JLabel lblDisco = new JLabel("Disco:");
         lblDisco.setFont(FONT_LABEL);
-        txtTamanoDisco = new JTextField("512", 5);
+        txtTamanoDisco = new JTextField(5);
  
         btnConfigurar = crearBoton("Configurar");
  
@@ -413,13 +413,12 @@ public class MainFrame extends javax.swing.JFrame {
  
         java.awt.EventQueue.invokeLater(() -> {
             MainFrame ventana = new MainFrame();
-            new MiniPC(ventana, 256, 512); // memoria principal y disco por defecto
+            new MiniPC(ventana); // memoria principal y disco por defecto
             ventana.setVisible(true);
         });
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
-
 
 
 }

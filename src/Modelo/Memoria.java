@@ -13,17 +13,11 @@ public class Memoria {
 
     public static final int TAMANO_MINIMO = 128;
 
-    // porcentaje por defecto para la zona de kernel
-    public static final double PORCENTAJE_KERNEL_DEFAULT = 0.40;
 
     private String[] datos;
     private int tamanoTotal;
     private int finKernel;      // posicion donde termina el kernel (exclusiva)
     private int inicioUsuario;  // igual a finKernel
-
-    public Memoria(int tamanoTotal) {
-        this(tamanoTotal, PORCENTAJE_KERNEL_DEFAULT);
-    }
 
     public Memoria(int tamanoTotal, double porcentajeKernel) {
         if (tamanoTotal < TAMANO_MINIMO) {
