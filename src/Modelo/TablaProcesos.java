@@ -15,6 +15,7 @@ import java.util.List;
  *
  * @author Diego Araya
  */
+
 public class TablaProcesos {
 
     private Memoria memoria;
@@ -103,7 +104,7 @@ public class TablaProcesos {
         memoria.escribirBCP(actual, nodoActual.serializar());
         memoria.liberarBCP(posicion);
     }
-
+    
     /**
      * Recorre toda la lista enlazada y devuelve los BCP de todos
      * los procesos que estan actualmente en memoria principal
@@ -118,7 +119,24 @@ public class TablaProcesos {
         }
         return lista;
     }
-
+    
+    /**
+     * Busca en la lista la posicion donde esta guardado el BCP de
+     * un proceso especifico, segun su pid
+     * Devuelve -1 si no se encuentra (el proceso ya no existe o nunca existio)
+     */
+    public int buscarPosicionPorPid(int pid) {
+        int actual = cabeza;
+        while (actual != -1) {
+            BCP nodo = leer(actual);
+            if (nodo.getPid() == pid) {
+                return actual;
+            }
+            actual = nodo.getSiguienteBCP();
+        }
+        return -1;
+    }
+    
     public int getCabeza() {
         return cabeza;
     }
