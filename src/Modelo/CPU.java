@@ -1,14 +1,19 @@
 package Modelo;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * CPU del Mini PC
  * Tiene sus propios registros, separados del BCP
+ * El Despachador es quien copia los valores entre el CPU y el BCP
+ * en cada cambio de contexto
  *
- * Cada vez que se llama a ejecutarCiclo() se simula un segundo de
- * CPU 
- * Las instrucciones que tengan un peso mayor a 1 requieren varios ciclos
+ * Cada vez que se llama a ejecutarCiclo() se simula "un segundo" de
+ * CPU
+ * Las instrucciones con peso mayor a 1 necesitan varios
+ * llamados antes de completarse de verdad
+ *
  * @author Diego Araya
  */
 public class CPU {
@@ -29,11 +34,13 @@ public class CPU {
 
     private Pila pilaActual;
 
-    private boolean banderaIgual; // usada por CMP y consultada por JE y JNE
+    private boolean banderaIgual; // usada por CMP, consultada por JE y JNE
 
+    private Consumer<String> salida; // para que INT 10H pueda imprimir sin conocer la interfaz
+    
     /**
      * El despachador llama a este metodo para montar un proceso en
-     * el cpu, antes de empezar a llamar ejecutarCiclo().
+     * el cpu, antes de empezar a llamar ejecutarCiclo()
      */
     public void cargarProceso(List<Instruccion> programa, int baseDireccion, int pcGuardado, Pila pila) {
         this.programa = programa;
@@ -47,7 +54,8 @@ public class CPU {
     }
 
     /**
-     * Ejecuta un ciclo y devuelve el resultado
+     * Ejecuta un ciclo 
+     * Devuelve el resultado
      * para que el controlador sepa que paso: si se bloqueo por un
      * INT 09H, si el programa ya termino, o si sigue normal
      */
@@ -63,11 +71,13 @@ public class CPU {
                 return ResultadoCiclo.TERMINADO;
             }
             ciclosRestantes = ir.getPeso();
+        }
 
-            if (ciclosRestantes == Ensamblador.PESO_BLOQUEO) {
-                // INT 09H, se bloquea de una vez, no cuenta como ciclo normal
-                return ResultadoCiclo.BLOQUEADO;
-            }
+        // INT 09H, se bloquea de una vez, no cuenta como ciclo normal.
+        // Se revisa siempre porque la instruccion pudo haberse cargado
+        // al terminar la anterior, no solo en el primer fetch
+        if (ir.getPeso() == Ensamblador.PESO_BLOQUEO) {
+            return ResultadoCiclo.BLOQUEADO;
         }
 
         ciclosRestantes--;
@@ -76,7 +86,7 @@ public class CPU {
             return ResultadoCiclo.CONTINUA;
         }
 
-        // se completaron los ciclos, ahora si se ejecuta 
+        // se completaron los ciclos, ahora si se ejecuta el efecto real
         decodeYExecute(ir);
 
         // la siguiente instruccion a cargar
@@ -88,18 +98,8 @@ public class CPU {
         return ResultadoCiclo.CONTINUA;
     }
 
-    /**
-     * Se usa cuando el proceso estaba bloqueado por INT 09H y el
-     * usuario ya entrego un valor desde el teclado
-     * Completa la instruccion pendiente y avanza al siguiente
-     */
-    public void resolverEntradaTeclado(int valorIngresado) {
-        this.dx = valorIngresado;
-        avanzarIndice();
-        ir = obtenerInstruccionActual();
-        if (ir != null) {
-            ciclosRestantes = ir.getPeso();
-        }
+    public void setSalida(Consumer<String> salida) {
+        this.salida = salida;
     }
 
     private Instruccion obtenerInstruccionActual() {
@@ -225,18 +225,23 @@ public class CPU {
     }
 
     /**
-     * Maneja las interrupciones 
+     * Maneja las interrupciones. Por ahora INT 21H (archivos) se
+     * deja sin implementar, se completa cuando este lista la clase
+     * del sistema de archivos virtual.
      */
     private void ejecutarInterrupcion(int codigo) {
         switch (codigo) {
-            case 32: // 20H finaliza el programa
+            case 32: // 20H, finaliza el programa
                 indiceActual = programa.size(); // asi obtenerInstruccionActual() devuelve null
                 break;
-            case 16: // 10H imprime el valor de dx en pantalla
+            case 16: // 10H, imprime el valor de dx en pantalla
+                if (salida != null) {
+                    salida.accept(String.valueOf(dx));
+                }
                 break;
-            case 9: // 09H entrada de teclado se maneja aparte como bloqueo
+            case 9: // 09H, entrada de teclado, se maneja aparte como bloqueo
                 break;
-            case 33: 
+            case 33: // 21H, manejo de archivos, pendiente
                 break;
             default:
                 throw new IllegalStateException("Codigo de interrupcion no soportado: " + codigo);
@@ -263,7 +268,7 @@ public class CPU {
         }
     }
 
-    // ---- getters y setters, usados por el Despachador para copiar valores 
+    // ---- getters y setters, usados por el Despachador para copiar valores ----
 
     public int getAc() { return ac; }
     public void setAc(int ac) { this.ac = ac; }

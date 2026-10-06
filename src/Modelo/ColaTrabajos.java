@@ -1,6 +1,8 @@
 package Modelo;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 /**
@@ -43,5 +45,14 @@ public class ColaTrabajos {
 
     public int getCantidad() {
         return trabajos.size();
+    }
+        /**
+     * Devuelve una copia de todos los trabajos que estan esperando,
+     * sin sacarlos de la cola
+     * Sirve nada mas para mostrarlos en
+     * la interfaz
+     */
+    public List<Trabajo> listar() {
+        return new ArrayList<>(trabajos);
     }
 }

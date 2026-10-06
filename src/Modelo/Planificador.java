@@ -46,7 +46,7 @@ public class Planificador {
      * Intenta meter el siguiente trabajo de la cola a memoria
      * principal. Si no hay espacio, primero intenta sacar a disco
      * algun proceso que no este corriendo. Si de todas formas no
-     * se puede, el trabajo se queda esperando y se devuelve null.
+     * se puede, el trabajo se queda esperando y se devuelve null
      */
     public BCP intentarIngresarSiguiente() {
         Trabajo trabajo = colaTrabajos.verSiguiente();
@@ -143,10 +143,13 @@ public class Planificador {
      * cupo.
      */
     public BCP intentarSwapIn() {
+        if (contarResidentes() >= MAX_PROCESOS_RESIDENTES) {
+            return null; // ya hay 5 en memoria principal, no cabe otro
+        }
         for (BCP candidato : tablaProcesos.listarTodos()) {
             boolean estaSuspendido = candidato.getEstado() == BCP.Estado.LISTO_SUSPENDIDO
                     || candidato.getEstado() == BCP.Estado.BLOQUEADO_SUSPENDIDO;
-
+ 
             if (estaSuspendido) {
                 boolean exito = hacerSwapIn(candidato);
                 if (exito) {
@@ -189,7 +192,7 @@ public class Planificador {
     /**
      * Devuelve el primer proceso en estado LISTO que encuentre en
      * la tabla, siguiendo el orden en el que fueron insertados
-     * (asi se respeta FCFS).
+     * (asi se respeta FCFS)
      */
     public BCP elegirSiguienteListo() {
         for (BCP bcp : tablaProcesos.listarTodos()) {
