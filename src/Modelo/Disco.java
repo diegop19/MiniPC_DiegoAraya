@@ -81,6 +81,42 @@ public class Disco {
     public int getFinMemoriaVirtual() {
         return finMemoriaVirtual;
     }
+    
+     /**
+     * Busca un espacio libre y contiguo dentro de la zona de
+     * memoria virtual, con al menos la cantidad de posiciones
+     * pedida
+     * Devuelve donde empieza, o -1 si no cabe
+     */
+    public int buscarEspacioMemoriaVirtual(int cantidadPosiciones) {
+        int libresSeguidas = 0;
+        int inicioCandidato = -1;
+ 
+        for (int i = inicioMemoriaVirtual; i < finMemoriaVirtual; i++) {
+            if (datos[i] == null) {
+                if (libresSeguidas == 0) {
+                    inicioCandidato = i;
+                }
+                libresSeguidas++;
+                if (libresSeguidas == cantidadPosiciones) {
+                    return inicioCandidato;
+                }
+            } else {
+                libresSeguidas = 0;
+            }
+        }
+        return -1;
+    }
+ 
+    /**
+     * Libera un rango de posiciones dentro de la memoria virtual,
+     * usado cuando un proceso vuelve a memoria principal (swap in)
+     */
+    public void liberarMemoriaVirtual(int posicionInicio, int cantidadPosiciones) {
+        for (int i = 0; i < cantidadPosiciones; i++) {
+            datos[posicionInicio + i] = null;
+        }
+    }
 
     // ---- zona de archivos virtuales (INT 21H) ----
 
