@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Representa un programa que todavia no tiene BCP ni espacio en
- * memoria asignado, esta esperando su turno en la ColaTrabajos
+ * memoria asignado
  *
  * @author Diego Araya
  */

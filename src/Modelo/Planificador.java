@@ -26,8 +26,7 @@ public class Planificador {
 
     // el programa real (la lista de instrucciones) de cada proceso
     // se guarda aca mientras el proceso existe, independiente de si
-    // esta en memoria o en disco en este momento. En memoria/disco
-    // solo se guarda el texto, como espejo para poder mostrarlo
+    // esta en memoria o en disco en este momento
     private Map<Integer, List<Instruccion>> programasPorPid;
 
     public Planificador(ColaTrabajos colaTrabajos, TablaProcesos tablaProcesos, Memoria memoria, Disco disco) {
@@ -51,6 +50,11 @@ public class Planificador {
     public BCP intentarIngresarSiguiente() {
         Trabajo trabajo = colaTrabajos.verSiguiente();
         if (trabajo == null) {
+            return null;
+        }
+        
+        // si no hay donde guardar el BCP en el kernel, ni se intenta
+        if (memoria.buscarSlotKernelLibre() == -1) {
             return null;
         }
 
@@ -85,7 +89,6 @@ public class Planificador {
 
         int posicionKernel = tablaProcesos.agregar(bcp);
         if (posicionKernel == -1) {
-            // raro, pero si no hay espacio ni para el bcp, se deshace todo
             memoria.liberarUsuario(posicionPrograma, programa.size());
             colaTrabajos.agregar(trabajo);
             return null;
@@ -96,19 +99,25 @@ public class Planificador {
     }
 
     /**
-     * Busca entre los procesos residentes uno que este LISTO (no
-     * corriendo ni bloqueado) y lo manda a disco para liberar su
+     * Busca entre los procesos residentes uno que este listo  y lo manda a disco para liberar su
      * espacio. Devuelve true si logro sacar alguno.
      */
-    private boolean intentarLiberarEspacio() {
-        for (BCP candidato : tablaProcesos.listarTodos()) {
-            if (candidato.getEstado() == BCP.Estado.LISTO) {
-                hacerSwapOut(candidato);
-                return true;
-            }
-        }
-        return false;
-    }
+     private boolean intentarLiberarEspacio() {
+          BCP victima = null;
+
+          // se queda con el ultimo proceso LISTO de la tabla, el que llego de ultimo
+          for (BCP candidato : tablaProcesos.listarTodos()) {
+              if (candidato.getEstado() == BCP.Estado.LISTO) {
+                  victima = candidato;
+              }
+          }
+
+          if (victima == null) {
+              return false;
+          }
+          hacerSwapOut(victima);
+          return true;
+      }
 
     private void hacerSwapOut(BCP bcp) {
         List<Instruccion> programa = programasPorPid.get(bcp.getPid());
@@ -127,11 +136,14 @@ public class Planificador {
 
         int posicionKernel = tablaProcesos.buscarPosicionPorPid(bcp.getPid());
 
-        // reutilizamos base y limite para que ahora apunten a la
-        // memoria virtual del disco, en vez de agregar un campo nuevo
+        // el pc tambien se traslada, manteniendo cuantas instrucciones
+        // lleva avanzadas dentro del programa
+        int desplazamientoPc = bcp.getPc() - bcp.getBase();
+
         bcp.setEstado(BCP.Estado.LISTO_SUSPENDIDO);
         bcp.setBase(posicionDisco);
         bcp.setLimite(posicionDisco + cantidadLineas - 1);
+        bcp.setPc(posicionDisco + desplazamientoPc);
 
         tablaProcesos.actualizar(posicionKernel, bcp);
     }
@@ -177,6 +189,8 @@ public class Planificador {
 
         int posicionKernel = tablaProcesos.buscarPosicionPorPid(bcp.getPid());
 
+       int desplazamientoPc = bcp.getPc() - bcp.getBase();
+
         if (bcp.getEstado() == BCP.Estado.BLOQUEADO_SUSPENDIDO) {
             bcp.setEstado(BCP.Estado.BLOQUEADO);
         } else {
@@ -184,6 +198,7 @@ public class Planificador {
         }
         bcp.setBase(posicionMemoria);
         bcp.setLimite(posicionMemoria + cantidadLineas - 1);
+        bcp.setPc(posicionMemoria + desplazamientoPc);
 
         tablaProcesos.actualizar(posicionKernel, bcp);
         return true;
@@ -191,8 +206,7 @@ public class Planificador {
 
     /**
      * Devuelve el primer proceso en estado LISTO que encuentre en
-     * la tabla, siguiendo el orden en el que fueron insertados
-     * (asi se respeta FCFS)
+     * la tabla, siguiendo el orden en el que fueron insertados FCFS
      */
     public BCP elegirSiguienteListo() {
         for (BCP bcp : tablaProcesos.listarTodos()) {
@@ -205,7 +219,7 @@ public class Planificador {
 
     /**
      * Libera todo lo que tenia asignado un proceso que ya termino,
-     * y lo saca por completo de la tabla de procesos.
+     * y lo saca por completo de la tabla de procesos
      */
     public void finalizarProceso(BCP bcp) {
         List<Instruccion> programa = programasPorPid.get(bcp.getPid());

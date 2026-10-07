@@ -38,7 +38,7 @@ public class TablaProcesos {
             return -1;
         }
 
-        bcp.setSiguienteBCP(-1); // por ahora queda como el ultimo de la lista
+        bcp.setSiguienteBCP(-1); 
         memoria.escribirBCP(posicion, bcp.serializar());
 
         if (cabeza == -1) {

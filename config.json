@@ -1,0 +1,7 @@
+{
+  "memoriaPrincipal": 256,
+  "porcentajeKernel": 0.6,
+  "disco": 512,
+  "porcentajeProgramas": 0.5,
+  "porcentajeMemoriaVirtual": 0.125
+}

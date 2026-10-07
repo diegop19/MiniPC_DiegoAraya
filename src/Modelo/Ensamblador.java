@@ -54,35 +54,68 @@ public class Ensamblador {
     }
     
 
-  public List<Instruccion> parsearArchivo(File archivo) throws IOException, FormatoInvalidoException {
-        List<Instruccion> instrucciones = new ArrayList<>();
- 
-        try (BufferedReader lector = new BufferedReader(new FileReader(archivo))) {
-            String linea;
-            int numeroLinea = 0;
- 
-            while ((linea = lector.readLine()) != null) {
-                numeroLinea++;
-                linea = linea.trim();
- 
-                if (linea.isEmpty()) {
-                    continue;
-                }
- 
-                instrucciones.add(parsearLinea(linea, numeroLinea));
-            }
-        }
- 
-        return instrucciones;
+    public List<Instruccion> parsearArchivo(File archivo) throws IOException, FormatoInvalidoException {
+       List<Instruccion> instrucciones = new ArrayList<>();
+       List<String> errores = new ArrayList<>();
+
+       try (BufferedReader lector = new BufferedReader(new FileReader(archivo))) {
+           String linea;
+           int numeroLinea = 0;
+
+           while ((linea = lector.readLine()) != null) {
+               numeroLinea++;
+               linea = linea.trim();
+
+               if (linea.isEmpty()) {
+                   continue;
+               }
+
+               // se guardan todos los errores en vez de detenerse en el primero
+               try {
+                   instrucciones.add(parsearLinea(linea, numeroLinea));
+               } catch (FormatoInvalidoException e) {
+                   errores.add(e.getMessage());
+               }
+           }
+       }
+
+    // si hubo errores, se lanza una sola excepcion con todos juntos
+    if (!errores.isEmpty()) {
+        throw new FormatoInvalidoException(String.join("\n", errores));
     }
+
+    return instrucciones;
+}
  
     /**
      * Parsea una sola linea y construye el objeto Instruccion
      */
     private Instruccion parsearLinea(String linea, int numeroLinea) throws FormatoInvalidoException {
-        String[] tokens = linea.split("[,\\s]+");
-        String opcode = tokens[0].toUpperCase();
- 
+        // el opcode va separado del resto solo por espacios
+        String[] partes = linea.split("\\s+", 2);
+        String opcode = partes[0].toUpperCase();
+
+        // los operandos se separan por una sola coma, con espacios opcionales
+        String[] operandos = new String[0];
+        if (partes.length == 2) {
+            operandos = partes[1].split("\\s*,\\s*", -1);
+        }
+
+        // un operando vacio significa coma de mas, al inicio o al final
+        // un operando con espacios adentro significa que falto una coma
+        for (String operando : operandos) {
+            if (operando.isEmpty() || operando.matches(".*\\s.*")) {
+                throw new FormatoInvalidoException(
+                        "Linea " + numeroLinea + ": comas o espacios mal colocados -> \"" + linea + "\"");
+            }
+        }
+
+        String[] tokens = new String[operandos.length + 1];
+        tokens[0] = partes[0];
+        for (int i = 0; i < operandos.length; i++) {
+            tokens[i + 1] = operandos[i];
+        }
+        
         switch (opcode) {
             case "LOAD":
             case "STORE":

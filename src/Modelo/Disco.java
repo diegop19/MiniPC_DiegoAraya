@@ -1,31 +1,28 @@
 package Modelo;
 
+import java.util.List;
+
 /**
  * Representa el almacenamiento secundario (disco) del Mini PC.
- * Se divide en 3 zonas consecutivas:
+ * Se divide en 2 zonas
  *   1. Programas: copia de los archivos asm cargados
  *   2. Memoria virtual: zona de swap para procesos que no caben en RAM
- *   3. Archivos virtuales: usados por la instruccion INT 21H
- *
- * Los porcentajes estan fijos por ahora como constantes, pero se va a cambiar
- * para que se lean desde un archivo json
- *
+
  * @author Diego Araya
  */
 public class Disco {
 
     public static final int TAMANO_MINIMO = 64;
+    public static final int ENTRADAS_INDICE = 10;
 
     private String[] datos;
     private int tamanoTotal;
 
-    // limites de cada zona (inicio inclusive, fin exclusivo)
+    // limites de cada zona 
     private int inicioProgramas;
     private int finProgramas;
     private int inicioMemoriaVirtual;
     private int finMemoriaVirtual;
-    private int inicioArchivos;
-    private int finArchivos;
 
     public Disco(int tamanoTotal, double porcentajeProgramas, double porcentajeMemoriaVirtual) {
         if (tamanoTotal < TAMANO_MINIMO) {
@@ -40,9 +37,6 @@ public class Disco {
         inicioMemoriaVirtual = finProgramas;
         finMemoriaVirtual = inicioMemoriaVirtual + (int) (tamanoTotal * porcentajeMemoriaVirtual);
 
-        // los archivos virtuales se quedan con todo lo que sobre
-        inicioArchivos = finMemoriaVirtual;
-        finArchivos = tamanoTotal;
     }
 
     // ---- zona de programas ----
@@ -51,6 +45,80 @@ public class Disco {
         validarZona(posicion, inicioProgramas, finProgramas, "programas");
         datos[posicion] = valor;
     }
+    
+    /**
+    * Revisa si todavia caben cantidadArchivos entradas en el indice y
+    * totalInstrucciones lineas en la zona de programas. Se usa antes de
+    * guardar, para no cargar solo una parte de los archivos.
+    */
+   public boolean hayEspacioParaProgramas(int cantidadArchivos, int totalInstrucciones) {
+       int entradasLibres = 0;
+       for (int i = inicioProgramas; i < inicioProgramas + ENTRADAS_INDICE; i++) {
+           if (datos[i] == null) {
+               entradasLibres++;
+           }
+       }
+
+       int posicionesLibres = 0;
+       for (int i = inicioProgramas + ENTRADAS_INDICE; i < finProgramas; i++) {
+           if (datos[i] == null) {
+               posicionesLibres++;
+           }
+       }
+
+       return cantidadArchivos <= entradasLibres && totalInstrucciones <= posicionesLibres;
+   }
+
+   /**
+    * Guarda un programa completo en la zona de programas y agrega su
+    * entrada al indice con el formato nombre:direccion. Devuelve la
+    * direccion donde quedo guardado.
+    */
+   public int guardarPrograma(String nombreArchivo, List<Instruccion> programa) {
+       int entrada = buscarEntradaIndiceLibre();
+       int direccion = buscarEspacioProgramas(programa.size());
+
+       if (entrada == -1 || direccion == -1) {
+           throw new IllegalStateException("No hay espacio en el disco para guardar " + nombreArchivo);
+       }
+
+       for (int i = 0; i < programa.size(); i++) {
+           datos[direccion + i] = programa.get(i).getTextoOriginal();
+       }
+       datos[entrada] = nombreArchivo + ":" + direccion;
+
+       return direccion;
+   }
+
+   private int buscarEntradaIndiceLibre() {
+       for (int i = inicioProgramas; i < inicioProgramas + ENTRADAS_INDICE; i++) {
+           if (datos[i] == null) {
+               return i;
+           }
+       }
+       return -1;
+   }
+
+   // busca espacio contiguo despues del indice, nunca dentro de el
+   private int buscarEspacioProgramas(int cantidadPosiciones) {
+       int libresSeguidas = 0;
+       int inicioCandidato = -1;
+
+       for (int i = inicioProgramas + ENTRADAS_INDICE; i < finProgramas; i++) {
+           if (datos[i] == null) {
+               if (libresSeguidas == 0) {
+                   inicioCandidato = i;
+               }
+               libresSeguidas++;
+               if (libresSeguidas == cantidadPosiciones) {
+                   return inicioCandidato;
+               }
+           } else {
+               libresSeguidas = 0;
+           }
+       }
+       return -1;
+   }
 
     public int getInicioProgramas() {
         return inicioProgramas;
@@ -111,20 +179,6 @@ public class Disco {
         }
     }
 
-    // ---- zona de archivos virtuales (INT 21H) ----
-
-    public void escribirArchivo(int posicion, String valor) {
-        validarZona(posicion, inicioArchivos, finArchivos, "archivos virtuales");
-        datos[posicion] = valor;
-    }
-
-    public int getInicioArchivos() {
-        return inicioArchivos;
-    }
-
-    public int getFinArchivos() {
-        return finArchivos;
-    }
 
     // ---- lectura general, sirve para cualquier zona ----
 

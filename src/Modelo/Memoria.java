@@ -138,8 +138,6 @@ public class Memoria {
         }
     }
 
-    
-    // lectura general y utilidades
     public String leer(int posicion) {
         if (posicion < 0 || posicion >= tamanoTotal) {
             throw new IndexOutOfBoundsException("Posicion fuera de rango: " + posicion);

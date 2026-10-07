@@ -41,6 +41,9 @@ public class MainFrame extends javax.swing.JFrame {
  
     // ---- Panel BPC actual ----
     private JLabel lblPid, lblEstado, lblPC, lblIR, lblAC, lblAX, lblBX, lblCX, lblDX;
+    
+    private JLabel lblPila, lblBase, lblLimite, lblPrioridad, lblTiempoInicio,
+        lblTiempoCpu, lblArchivosAbiertos, lblSiguienteBCP, lblCpuId, lblTiempoSimulado;
  
     // ---- Pantalla y teclado ----
     private JTextArea areaPantalla;
@@ -84,7 +87,7 @@ public class MainFrame extends javax.swing.JFrame {
 
 
     /**
-     * Arma la interfaz completa por código, después de initComponents().
+     * Arma la interfaz completa por código
      */
     private void construirInterfaz() {
         setTitle("Proyecto 1 - Gestor de Procesos");
@@ -192,11 +195,14 @@ public class MainFrame extends javax.swing.JFrame {
         panelCentral.setBackground(COLOR_FONDO);
  
         // Izquierda: Procesos (arriba) + BPC actual (abajo)
-        JPanel panelIzquierdo = new JPanel(new GridLayout(2, 1, 10, 10));
+        JPanel panelIzquierdo = new JPanel(new BorderLayout(10, 10));
         panelIzquierdo.setBackground(COLOR_FONDO);
-        panelIzquierdo.setPreferredSize(new Dimension(260, 0));
-        panelIzquierdo.add(crearPanelTablaProcesos());
-        panelIzquierdo.add(crearPanelBCP());
+        panelIzquierdo.setPreferredSize(new Dimension(290, 0));
+
+        JPanel panelProcesos = crearPanelTablaProcesos();
+        panelProcesos.setPreferredSize(new Dimension(0, 160));
+        panelIzquierdo.add(panelProcesos, BorderLayout.NORTH);
+        panelIzquierdo.add(crearPanelBCP(), BorderLayout.CENTER);
  
         // Derecha: Memoria/Disco (arriba) + Pantalla (abajo)
         JPanel panelDerecho = new JPanel(new BorderLayout(10, 10));
@@ -283,37 +289,52 @@ public class MainFrame extends javax.swing.JFrame {
         renderizadorHeader.setFont(FONT_LABEL);
         renderizadorHeader.setHorizontalAlignment(SwingConstants.CENTER);
         tabla.getTableHeader().setDefaultRenderer(renderizadorHeader);
+        tabla.setDefaultEditor(Object.class, null); 
  
         return tabla;
     }
  
     // ---- Panel BPC actual ----
     private JPanel crearPanelBCP() {
-        JPanel panel = crearPanelConTitulo("BPC actual - CPU1");
- 
-        JPanel contenido = new JPanel();
-        contenido.setBackground(COLOR_PANEL);
-        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
- 
-        lblPid = crearFilaBCP(contenido, "PID:", "-");
-        lblEstado = crearFilaBCP(contenido, "Estado:", "-");
-        lblPC = crearFilaBCP(contenido, "PC:", "0");
-        lblIR = crearFilaBCP(contenido, "IR:", "-");
-        lblAC = crearFilaBCP(contenido, "AC:", "0");
-        lblAX = crearFilaBCP(contenido, "AX:", "0");
-        lblBX = crearFilaBCP(contenido, "BX:", "0");
-        lblCX = crearFilaBCP(contenido, "CX:", "0");
-        lblDX = crearFilaBCP(contenido, "DX:", "0");
- 
-        panel.add(contenido, BorderLayout.CENTER);
-        return panel;
-    }
+       JPanel panel = crearPanelConTitulo("BPC actual - CPU1");
+
+       JPanel contenido = new JPanel();
+       contenido.setBackground(COLOR_PANEL);
+       contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+
+       lblTiempoSimulado = crearFilaBCP(contenido, "Tiempo simulado:", "0 s");
+       lblCpuId = crearFilaBCP(contenido, "CPU:", "-");
+       lblPid = crearFilaBCP(contenido, "PID:", "-");
+       lblEstado = crearFilaBCP(contenido, "Estado:", "-");
+       lblPC = crearFilaBCP(contenido, "PC:", "0");
+       lblIR = crearFilaBCP(contenido, "IR:", "-");
+       lblAC = crearFilaBCP(contenido, "AC:", "0");
+       lblAX = crearFilaBCP(contenido, "AX:", "0");
+       lblBX = crearFilaBCP(contenido, "BX:", "0");
+       lblCX = crearFilaBCP(contenido, "CX:", "0");
+       lblDX = crearFilaBCP(contenido, "DX:", "0");
+       lblPila = crearFilaBCP(contenido, "Pila:", "-");
+       lblBase = crearFilaBCP(contenido, "Base:", "-");
+       lblLimite = crearFilaBCP(contenido, "Límite:", "-");
+       lblPrioridad = crearFilaBCP(contenido, "Prioridad:", "-");
+       lblTiempoInicio = crearFilaBCP(contenido, "Inicio:", "-");
+       lblTiempoCpu = crearFilaBCP(contenido, "Tiempo CPU:", "-");
+       lblArchivosAbiertos = crearFilaBCP(contenido, "Archivos:", "-");
+       lblSiguienteBCP = crearFilaBCP(contenido, "Siguiente BCP:", "-");
+
+       JScrollPane scroll = new JScrollPane(contenido);
+       scroll.setBorder(null);
+       scroll.getViewport().setBackground(COLOR_PANEL);
+       scroll.getVerticalScrollBar().setUnitIncrement(12);
+       panel.add(scroll, BorderLayout.CENTER);
+       return panel;
+   }
  
     private JLabel crearFilaBCP(JPanel contenedor, String etiqueta, String valorInicial) {
         JPanel fila = new JPanel(new BorderLayout());
         fila.setBackground(COLOR_PANEL);
-        fila.setBorder(new EmptyBorder(3, 0, 3, 0));
-        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        fila.setBorder(new EmptyBorder(1, 0, 1, 0));
+        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
  
         JLabel lblEtiqueta = new JLabel(etiqueta);
         lblEtiqueta.setFont(FONT_LABEL);
@@ -394,6 +415,16 @@ public class MainFrame extends javax.swing.JFrame {
     public JLabel getLblBX() { return lblBX; }
     public JLabel getLblCX() { return lblCX; }
     public JLabel getLblDX() { return lblDX; }
+    public JLabel getLblPila() { return lblPila; }
+    public JLabel getLblBase() { return lblBase; }
+    public JLabel getLblLimite() { return lblLimite; }
+    public JLabel getLblPrioridad() { return lblPrioridad; }
+    public JLabel getLblTiempoInicio() { return lblTiempoInicio; }
+    public JLabel getLblTiempoCpu() { return lblTiempoCpu; }
+    public JLabel getLblArchivosAbiertos() { return lblArchivosAbiertos; }
+    public JLabel getLblSiguienteBCP() { return lblSiguienteBCP; }
+    public JLabel getLblCpuId() { return lblCpuId; }
+    public JLabel getLblTiempoSimulado() { return lblTiempoSimulado; }
  
     public void setArchivosCargados(int cantidad) {
         lblArchivos.setText(cantidad + " archivo(s) cargado(s)");

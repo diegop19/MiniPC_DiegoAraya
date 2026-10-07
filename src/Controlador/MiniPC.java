@@ -12,7 +12,10 @@ import Modelo.Memoria;
 import Modelo.Planificador;
 import Modelo.TablaProcesos;
 import Modelo.Trabajo;
+import Modelo.Pila;
 import Vista.MainFrame;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,6 +67,8 @@ public class MiniPC {
     private int posicionKernelActual;
 
     private int contadorPid;
+    private int segundosSimulados;
+    
     private int archivosCargados;
     private Map<Integer, String> nombresArchivoPorPid;
     private LinkedList<Integer> colaEsperaTeclado; // pids esperando un valor, en orden
@@ -100,6 +105,7 @@ public class MiniPC {
         procesoActual = null;
         posicionKernelActual = -1;
         contadorPid = 1;
+        segundosSimulados = 0;
         archivosCargados = 0;
         nombresArchivoPorPid = new HashMap<>();
         colaEsperaTeclado = new LinkedList<>();
@@ -169,11 +175,14 @@ public class MiniPC {
             throw new IllegalArgumentException("porcentajeKernel debe estar entre 0 y 1");
         }
         if ((int) (tamanoMemoria * porcentajeKernel) < BCP.TAMANO_BLOQUE) {
-            throw new IllegalArgumentException("El kernel no alcanza ni para un BCP (" + BCP.TAMANO_BLOQUE + " posiciones)");
+            throw new IllegalArgumentException("El kernel no es lo suficientemente grande (" + BCP.TAMANO_BLOQUE + " posiciones)");
         }
         if (porcentajeProgramas <= 0 || porcentajeMemoriaVirtual <= 0
                 || porcentajeProgramas + porcentajeMemoriaVirtual >= 1) {
             throw new IllegalArgumentException("Los porcentajes del disco deben ser positivos y sumar menos de 1");
+        }
+        if ((int) (tamanoDisco * porcentajeProgramas) <= Disco.ENTRADAS_INDICE) {
+            throw new IllegalArgumentException("La zona de programas del disco no alcanza para el índice de archivos");
         }
     }
 
@@ -196,6 +205,7 @@ public class MiniPC {
         JFileChooser selector = new JFileChooser();
         selector.setMultiSelectionEnabled(true);
         selector.setFileFilter(new FileNameExtensionFilter("Archivos ASM (*.asm)", "asm"));
+        selector.setMultiSelectionEnabled(true);
 
         if (selector.showOpenDialog(vista) != JFileChooser.APPROVE_OPTION) {
             return;
@@ -208,44 +218,65 @@ public class MiniPC {
         int pidTemporal = contadorPid;
         int espacioUsuario = memoria.getTamanoTotal() - memoria.getInicioUsuario();
 
+       StringBuilder errores = new StringBuilder();
+
         for (File archivo : archivos) {
             if (!archivo.getName().toLowerCase().endsWith(".asm")) {
-                mostrarError("El archivo " + archivo.getName() + " no tiene extensión .asm", "Formato inválido");
-                return;
+                errores.append(archivo.getName()).append(": no tiene extensión .asm\n");
+                continue;
             }
 
             List<Instruccion> programa;
             try {
                 programa = ensamblador.parsearArchivo(archivo);
             } catch (IOException e) {
-                mostrarError("No se pudo leer " + archivo.getName() + ": " + e.getMessage(), "Error de lectura");
-                return;
+                errores.append(archivo.getName()).append(": no se pudo leer (").append(e.getMessage()).append(")\n");
+                continue;
             } catch (FormatoInvalidoException e) {
-                mostrarError(archivo.getName() + ": " + e.getMessage(), "Formato inválido");
-                return;
+                errores.append(archivo.getName()).append(":\n").append(e.getMessage()).append("\n");
+                continue;
             }
 
             if (programa.isEmpty()) {
-                mostrarError("El archivo " + archivo.getName() + " está vacío", "Formato inválido");
-                return;
+                errores.append(archivo.getName()).append(": el archivo está vacío\n");
+                continue;
             }
             if (programa.size() > espacioUsuario) {
-                mostrarError("El programa " + archivo.getName() + " (" + programa.size()
-                        + " instrucciones) no cabe en la memoria de usuario (" + espacioUsuario + " posiciones)",
-                        "Programa muy grande");
-                return;
+                errores.append(archivo.getName()).append(": tiene ").append(programa.size())
+                        .append(" instrucciones y no cabe en la memoria de usuario (")
+                        .append(espacioUsuario).append(" posiciones)\n");
+                continue;
             }
 
             nuevos.add(new Trabajo(pidTemporal, archivo.getName(), programa));
             pidTemporal++;
         }
 
+        // si algun archivo tuvo problemas, no se carga ninguno
+        if (errores.length() > 0) {
+            JTextArea areaErrores = new JTextArea(errores.toString(), 10, 50);
+            areaErrores.setEditable(false);
+            JOptionPane.showMessageDialog(vista, new JScrollPane(areaErrores),
+                    "No se cargó ningún archivo", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        int totalInstrucciones = 0;
+        for (Trabajo trabajo : nuevos) {
+            totalInstrucciones = totalInstrucciones + trabajo.getPrograma().size();
+        }
+        if (!disco.hayEspacioParaProgramas(nuevos.size(), totalInstrucciones)) {
+            mostrarError("No hay espacio en el disco para guardar estos programas (índice o zona de programas llena)",
+                    "Disco lleno");
+            return;
+        }
+
         // si llego hasta aca, todos los archivos son validos
         for (Trabajo trabajo : nuevos) {
+            int direccionDisco = disco.guardarPrograma(trabajo.getNombreArchivo(), trabajo.getPrograma());
             nombresArchivoPorPid.put(trabajo.getPid(), trabajo.getNombreArchivo());
             planificador.agregarTrabajo(trabajo);
             vista.imprimirEnPantalla("[Sistema] Trabajo cargado: PID " + trabajo.getPid()
-                    + " (" + trabajo.getNombreArchivo() + ")");
+                    + " (" + trabajo.getNombreArchivo() + "), guardado en disco desde la posición " + direccionDisco);
         }
         contadorPid = pidTemporal;
         archivosCargados = archivosCargados + nuevos.size();
@@ -312,6 +343,7 @@ public class MiniPC {
 
         CPU.ResultadoCiclo resultado = cpu.ejecutarCiclo();
         procesoActual.sumarTiempoCpu(1);
+        segundosSimulados++;
 
         switch (resultado) {
             case BLOQUEADO:
@@ -610,14 +642,9 @@ public class MiniPC {
      * hasta que entra otro proceso
      */
     private void actualizarPanelCPU() {
-        if (procesoActual != null) {
-            vista.getLblPid().setText(String.valueOf(procesoActual.getPid()));
-            vista.getLblEstado().setText("EJECUTANDO");
-        } else {
-            vista.getLblPid().setText("-");
-            vista.getLblEstado().setText("CPU LIBRE");
-        }
+        vista.getLblTiempoSimulado().setText(segundosSimulados + " s");
 
+        // registros reales del cpu
         vista.getLblPC().setText(String.valueOf(cpu.getPc()));
         if (cpu.getIr() != null) {
             vista.getLblIR().setText(cpu.getIr().getTextoOriginal());
@@ -629,8 +656,51 @@ public class MiniPC {
         vista.getLblBX().setText(String.valueOf(cpu.getBx()));
         vista.getLblCX().setText(String.valueOf(cpu.getCx()));
         vista.getLblDX().setText(String.valueOf(cpu.getDx()));
+
+        // datos del BCP del proceso que esta montado en el cpu
+        if (procesoActual == null) {
+            vista.getLblCpuId().setText("CPU1");
+            vista.getLblPid().setText("-");
+            vista.getLblEstado().setText("CPU LIBRE");
+            vista.getLblPila().setText("-");
+            vista.getLblBase().setText("-");
+            vista.getLblLimite().setText("-");
+            vista.getLblPrioridad().setText("-");
+            vista.getLblTiempoInicio().setText("-");
+            vista.getLblTiempoCpu().setText("-");
+            vista.getLblArchivosAbiertos().setText("-");
+            vista.getLblSiguienteBCP().setText("-");
+        } else {
+            vista.getLblCpuId().setText("CPU1");
+            vista.getLblPid().setText(String.valueOf(procesoActual.getPid()));
+            vista.getLblEstado().setText(procesoActual.getEstado().toString());
+            vista.getLblPila().setText(textoPila(procesoActual.getPila()));
+            vista.getLblBase().setText(String.valueOf(procesoActual.getBase()));
+            vista.getLblLimite().setText(String.valueOf(procesoActual.getLimite()));
+            vista.getLblPrioridad().setText(String.valueOf(procesoActual.getPrioridad()));
+            vista.getLblTiempoInicio().setText(procesoActual.getTiempoInicio());
+            vista.getLblTiempoCpu().setText(procesoActual.getTiempoCpu() + " s");
+            vista.getLblArchivosAbiertos().setText(procesoActual.getArchivosAbiertos());
+            vista.getLblSiguienteBCP().setText(String.valueOf(procesoActual.getSiguienteBCP()));
+        }
     }
 
+    // muestra la pila como [3, 7, -, -, -]
+    private String textoPila(Pila pila) {
+        Integer[] valores = pila.getValores();
+        String texto = "[";
+        for (int i = 0; i < valores.length; i++) {
+            if (valores[i] == null) {
+                texto = texto + "-";
+            } else {
+                texto = texto + valores[i];
+            }
+            if (i < valores.length - 1) {
+                texto = texto + ", ";
+            }
+        }
+        return texto + "]";
+    }
     // =========================================================
     // utilidades
     // =========================================================

@@ -9,8 +9,6 @@ import java.util.function.Consumer;
  * El Despachador es quien copia los valores entre el CPU y el BCP
  * en cada cambio de contexto
  *
- * Cada vez que se llama a ejecutarCiclo() se simula "un segundo" de
- * CPU
  * Las instrucciones con peso mayor a 1 necesitan varios
  * llamados antes de completarse de verdad
  *
@@ -225,9 +223,7 @@ public class CPU {
     }
 
     /**
-     * Maneja las interrupciones. Por ahora INT 21H (archivos) se
-     * deja sin implementar, se completa cuando este lista la clase
-     * del sistema de archivos virtual.
+     * Maneja las interrupciones
      */
     private void ejecutarInterrupcion(int codigo) {
         switch (codigo) {
@@ -241,7 +237,7 @@ public class CPU {
                 break;
             case 9: // 09H, entrada de teclado, se maneja aparte como bloqueo
                 break;
-            case 33: // 21H, manejo de archivos, pendiente
+            case 33: // 21H, manejo de archivos
                 break;
             default:
                 throw new IllegalStateException("Codigo de interrupcion no soportado: " + codigo);
